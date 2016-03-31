@@ -1,0 +1,33 @@
+<html>
+    <head>
+        <style>
+         body {
+             height: 9000px;
+         }
+        </style>
+
+        <script type="text/javascript" src="scrollkeep.js"></script>
+    </head>
+
+    <body>
+        <p>Howdy</p>
+
+        <script>
+         Scrollkeep.new({
+             vector: 'down',
+             dist: 20,
+             func: (function () {console.log("Down 20");})
+         });
+         Scrollkeep.new({
+             vector: 'up',
+             dist: 10,
+             func: (function () {console.log("Up 10");})
+         });
+         Scrollkeep.new({
+             vector: 'down',
+             dist: 200,
+             func: (function () {console.log("Down 200");})
+         });
+        </script>
+    </body>
+</html>
