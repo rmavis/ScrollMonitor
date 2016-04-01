@@ -70,6 +70,14 @@
              })
          });
 
+         var top = new ScrollMonitor({
+         pos: 'top',
+         dist: 50,
+         func: (function () {
+         console.log('Within 50 of top ('+window.scrollY+').');
+         })
+         });
+
         </script>
     </body>
 </html>

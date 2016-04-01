@@ -1,3 +1,15 @@
+/*
+
+  TODO:
+  - If scroll too fast, might not register? Check pos:top
+  - Cleanup functions
+  - Documentation
+  - Examples
+
+ */
+
+
+
 function ScrollMonitor(config) {
 
     var $self = { },
@@ -74,34 +86,34 @@ function ScrollMonitor(config) {
 
 
 
-    function validateConfig(config) {
+    function validateConfig(conf) {
         var valid = { };
 
-        if ((config.hasOwnProperty('func')) &&
-            (typeof config.func == 'function')) {
-            valid.func = config.func;
+        if ((conf.hasOwnProperty('func')) &&
+            (typeof conf.func == 'function')) {
+            valid.func = conf.func;
         }
         else {
             console.log("ScrollMonitor error: no callback given.");
             return null;
         }
 
-        if ((config.hasOwnProperty('pos')) &&
+        if ((conf.hasOwnProperty('pos')) &&
             (getValidPositions().indexOf(conf.pos) != -1)) {
-            valid.pos = config.pos;
-            valid.dist = ((config.hasOwnProperty('dist')) &&
-                          (is_int(config.dist)))
-                ? config.dist
+            valid.pos = conf.pos;
+            valid.dist = ((conf.hasOwnProperty('dist')) &&
+                          (is_int(conf.dist)))
+                ? conf.dist
                 : 0;
         }
 
-        else if (((config.hasOwnProperty('dir')) &&
+        else if (((conf.hasOwnProperty('dir')) &&
                   (getValidDirections().indexOf(conf.dir) != -1)) ||
-                 (config.dir == null)) {
-            valid.dir = config.dir;
+                 (conf.dir == null)) {
+            valid.dir = conf.dir;
 
-            if ((config.hasOwnProperty('dist')) && (is_int(config.dist))) {
-                valid.dist = config.dist;
+            if ((conf.hasOwnProperty('dist')) && (is_int(conf.dist))) {
+                valid.dist = conf.dist;
             }
             else {
                 console.log("ScrollMonitor error: no distance given.");
@@ -114,8 +126,8 @@ function ScrollMonitor(config) {
             return null;
         }
 
-        valid.elem = config.elem;
-        valid.log = config.log;
+        valid.elem = conf.elem;
+        valid.log = conf.log;
 
         return valid;
     }
@@ -153,11 +165,13 @@ function ScrollMonitor(config) {
             console.log("Checking scroll position.");
         }
 
-        var curr = getCurrentPosition();
+        var curr = getCurrentPosition(),
+            exec_pos = null;
 
-        if (($conf.pos == 'top') && (curr.y <= $conf.dist)) {
-            $self.last_f = curr.y;
-            $conf.func();
+        if ($conf.pos == 'top') {
+            if (curr.y <= $conf.dist) {
+                exec_pos = curr.y;
+            }
         }
 
         else {
@@ -166,12 +180,11 @@ function ScrollMonitor(config) {
                 : document.documentElement.offsetHeight; 
 
             if ((win_h + $conf.dist) <= curr.y) {
-                $self.last_f = curr.y;
-                $conf.func();
+                exec_pos = curr.y;
             }
         }
 
-        scrollCheckWrapup();
+        scrollCheckWrapup(curr, exec_pos);
     }
 
 
@@ -224,16 +237,11 @@ function ScrollMonitor(config) {
 
         // console.log('direction: ' + dir + ' & distance: ' + dist);
 
-        if ($self.check_dist(Math.abs($self.last_f - dist), dir)) {
-            // console.log("did scroll enough");
-            $self.last_f = dist;
-            $conf.func();
-        }
-        else {
-            // console.log("did not scroll enough");
-        }
+        var exec_pos = ($self.check_dist(Math.abs($self.last_f - dist), dir))
+            ? dist
+            : null;
 
-        scrollCheckWrapup();
+        scrollCheckWrapup(curr, exec_pos);
     }
 
 
@@ -260,12 +268,6 @@ function ScrollMonitor(config) {
 
 
 
-    function didScrollWithinPosition() {
-
-    }
-
-
-
     function getCurrentPosition() {
         return {
             x: $conf.elem[$self.dist_x],
@@ -275,9 +277,14 @@ function ScrollMonitor(config) {
 
 
 
-    function scrollCheckWrapup() {
-        $x.last = x_curr,
-        $y.last = y_curr;
+    function scrollCheckWrapup(curr, exec_pos) {
+        if (exec_pos) {
+            $self.last_f = exec_pos;
+            $conf.func();
+        }
+
+        $x.last = curr.x,
+        $y.last = curr.y;
     }
 
 
@@ -335,8 +342,6 @@ function ScrollMonitor(config) {
 
 
     this.init = init;
-
-    // this.handleEvent = checkScrollPosition;
 
     // This needs to stay down here.
     return this.init(config);
