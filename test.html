@@ -4,30 +4,72 @@
          body {
              height: 9000px;
          }
+
+         .blockwrap {
+             position: relative;
+             top: 0;
+             border: 1px solid;
+             height: 300px;
+             width: 300px;
+             overflow: auto;
+             transition: top 0.5s ease, background-color 0.5s ease;
+         }
+
+         .blockbuster {
+             height: 900%;
+             width: 900%;
+         }
         </style>
 
-        <script type="text/javascript" src="scrollkeep.js"></script>
+        <script type="text/javascript" src="ScrollMonitor.js"></script>
     </head>
 
     <body>
-        <p>Howdy</p>
+        <div id="wrap" class="blockwrap">
+            <p id="bust" class="blockbuster">Howdy</p>
+        </div>
 
         <script>
-         Scrollkeep.new({
-             vector: 'down',
-             dist: 20,
-             func: (function () {console.log("Down 20");})
-         });
-         Scrollkeep.new({
-             vector: 'up',
-             dist: 10,
-             func: (function () {console.log("Up 10");})
-         });
-         Scrollkeep.new({
-             vector: 'down',
+         /*
+            var down20 = new ScrollMonitor({
+            dir: 'down',
+            dist: 20,
+            func: (function () {console.log('Down 20 ('+window.scrollY+')');})
+            });
+
+            var up10 = new ScrollMonitor({
+            dir: 'up',
+            dist: 10,
+            func: (function () {console.log('Up 10 ('+window.scrollY+')');})
+            });
+          */
+
+         var down200 = new ScrollMonitor({
+             dir: 'down',
              dist: 200,
-             func: (function () {console.log("Down 200");})
+             func: (function () {
+                 console.log('Down 200 ('+window.scrollY+')');
+                 document.getElementById('wrap').style.top = window.scrollY + 50;
+             })
          });
+
+         var block = new ScrollMonitor({
+             elem: document.getElementById('wrap'),
+             // dir: 'down',
+             dist: 50,
+             func: (function () {
+                 // console.log('Down 50 ('+document.getElementById('wrap').scrollTop+')');
+                 var elem = document.getElementById('wrap');
+                 if (elem.style.backgroundColor == 'rgb(255, 0, 255)') {
+                     // console.log("Removing color");
+                     elem.style.backgroundColor = '#FFFFFF';
+                 } else {
+                     // console.log("Adding color");
+                     elem.style.backgroundColor = 'rgb(255, 0, 255)';
+                 }
+             })
+         });
+
         </script>
     </body>
 </html>
