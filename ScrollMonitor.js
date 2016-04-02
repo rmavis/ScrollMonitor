@@ -123,7 +123,10 @@ function ScrollMonitor(config) {
             console.log(config);
         }
 
-        return mergeObjects($conf, getPublicProperties());
+        var public = mergeObjects($conf, getPublicProperties());
+        delete public.dir;
+
+        return public;
     }
 
 
