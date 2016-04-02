@@ -1,10 +1,15 @@
 /*
 
   TODO:
-  - If scroll too fast, might not register? Check pos:top
-  - Cleanup functions
-  - Documentation
-  - Examples
+  - [ ] Documentation
+  - [ ] Examples
+  - [X] If scroll too fast, might not register? Check pos:top
+  - [X] Cleanup functions
+    var.stop(); var = null;
+  - [X] Logging
+
+  NICE:
+  - [X] dir: 'x|y'
 
  */
 
@@ -12,6 +17,25 @@
 
 function ScrollMonitor(config) {
 
+    /*
+     * These variables prefixed with `$` are state variables. They
+     * retain the instance's scroll position, config, etc.
+     *
+     * `$self` will contain, e.g., instructions on handling the
+     * scroll event. It will not be made public because those things
+     * should not be exposed to the user and they provide no useful
+     * information.
+     *
+     * `$x` and `$y` can expose useful information but they are also
+     * used internally, so to the user they are read-only.
+     *
+     * `$conf` is given by the user. It makes some sense that they
+     * should be able to change it, so it's merged with some other
+     * user-safe properties and returned to them.
+     *
+     * The `$conf.dir` property is checked and slightly modified
+     * during validation. See `validateConfig` for more.
+     */
     var $self = { },
         $conf = { },
         $x = {orig: 0, last: 0, vect: 0},
@@ -19,32 +43,50 @@ function ScrollMonitor(config) {
 
 
 
+    /*
+     * The default config lacks a `pos` key, even though that is a
+     * valid key. See `validateConfig` for more on that.
+     *
+     * If `dir` is `null` is the user's config, then the `func` will
+     * fire when the user scrolls the `dist` in any direction.
+     */
     function getDefaultConfig() {
         if ($conf.log) {
             console.log("Getting default config object.");
         }
 
         return {
+            // This is the direction. Valid values are given in
+            // `getValidDirections`.
             dir: null,
+            // This is the distance. It should be an integer.
             dist: null,
+            // This is the element. Any scrollable element will work.
             elem: window,
+            // This is the callback function.
             func: null,
+            // This will trigger many messages in the console.log.
             log: false
         };
     }
 
 
 
+    /*
+     * The `x` and `y` values map to `['left', 'right']` and
+     * `['up', 'down']`, respectively. For more on those, see
+     * `validateConfig`.
+     */
     function getValidDirections() {
         if ($conf.log) {
             console.log("Getting valid directions.");
         }
 
-        return ['up', 'down', 'left', 'right'];
+        return ['up', 'down', 'left', 'right', 'x', 'y'];
     }
 
 
-
+    // Why no `left` and `right`?  #HERE
     function getValidPositions() {
         if ($conf.log) {
             console.log("Getting valid positions.");
@@ -64,6 +106,7 @@ function ScrollMonitor(config) {
             $conf = valid;
 
             setSelfFromConf();
+            addListener();
 
             if ($conf.log) {
                 console.log("Initializing new scroll with:");
@@ -72,7 +115,6 @@ function ScrollMonitor(config) {
                 console.log($self);
             }
 
-            $conf.elem.addEventListener('scroll', $self.handler);
             $self.handler();
         }
 
@@ -81,12 +123,16 @@ function ScrollMonitor(config) {
             console.log(config);
         }
 
-        return $conf;
+        return mergeObjects($conf, getPublicProperties());
     }
 
 
 
     function validateConfig(conf) {
+        if ($conf.log) {
+            console.log('Validating config.');
+        }
+
         var valid = { };
 
         if ((conf.hasOwnProperty('func')) &&
@@ -94,7 +140,7 @@ function ScrollMonitor(config) {
             valid.func = conf.func;
         }
         else {
-            console.log("ScrollMonitor error: no callback given.");
+            console.log("Error: no callback given.");
             return null;
         }
 
@@ -102,7 +148,7 @@ function ScrollMonitor(config) {
             (getValidPositions().indexOf(conf.pos) != -1)) {
             valid.pos = conf.pos;
             valid.dist = ((conf.hasOwnProperty('dist')) &&
-                          (is_int(conf.dist)))
+                          (isInt(conf.dist)))
                 ? conf.dist
                 : 0;
         }
@@ -110,19 +156,21 @@ function ScrollMonitor(config) {
         else if (((conf.hasOwnProperty('dir')) &&
                   (getValidDirections().indexOf(conf.dir) != -1)) ||
                  (conf.dir == null)) {
-            valid.dir = conf.dir;
+            if (conf.dir == 'y') {valid.dir = ['up', 'down'];}
+            else if (conf.dir == 'x') {valid.dir = ['left', 'right'];}
+            else {valid.dir = conf.dir;}
 
-            if ((conf.hasOwnProperty('dist')) && (is_int(conf.dist))) {
+            if ((conf.hasOwnProperty('dist')) && (isInt(conf.dist))) {
                 valid.dist = conf.dist;
             }
             else {
-                console.log("ScrollMonitor error: no distance given.");
+                console.log("Error: no distance given.");
                 return null;
             }
         }
 
         else {
-            console.log("ScrollMonitor error: no direction/position given.");
+            console.log("Error: no direction/position given.");
             return null;
         }
 
@@ -135,9 +183,12 @@ function ScrollMonitor(config) {
 
 
     function setSelfFromConf() {
+        if ($conf.log) {
+            console.log('Setting $self state from $conf state.');
+        }
+
         if ($conf.hasOwnProperty('pos')) {
             $self.handler = checkScrollPosition;
-            // $self.check_dist = didScrollWithinPosition;
         }
         else {
             $self.handler = checkScrollDistance;
@@ -166,6 +217,7 @@ function ScrollMonitor(config) {
         }
 
         var curr = getCurrentPosition(),
+            diff = getDeltas(curr),
             exec_pos = null;
 
         if ($conf.pos == 'top') {
@@ -195,43 +247,23 @@ function ScrollMonitor(config) {
         }
 
         var curr = getCurrentPosition(),
-            x_diff = (curr.x - $x.last),
-            y_diff = (curr.y - $y.last),
-            x_dir = null,
-            y_dir = null,
+            diff = getDeltas(curr),
             dist = null,
             dir = null;
 
         // console.log('last: ('+$x.last+', '+$y.last+')');
         // console.log('current: (' + curr.x + ', ' + curr.y + ')');
-        // console.log('difference: ('+x_diff+', '+y_diff+')');
-
-        if (x_diff < 0) {
-            x_dir = 'left';
-            $x.vect = ($x.vect < 0) ? ($x.vect + x_diff) : x_diff;
-        } else if (0 < x_diff) {
-            x_dir = 'right';
-            $x.vect = (0 < $x.vect) ? ($x.vect + x_diff) : x_diff;
-        }
-
-        if (y_diff < 0) {
-            y_dir = 'up';
-            $y.vect = ($y.vect < 0) ? ($y.vect + y_diff) : y_diff;
-        } else if (0 < y_diff) {
-            y_dir = 'down';
-            $y.vect = (0 < $y.vect) ? ($y.vect + y_diff) : y_diff;
-        }
-
+        // console.log('difference: ('+diff.x.dist+', '+diff.y.dist+')');
         // console.log('vector: ('+$x.vect+', '+$y.vect+')');
 
         // Prefer the Y difference.
-        if (Math.abs(y_diff) < Math.abs(x_diff)) {
+        if (Math.abs(diff.y.dist) < Math.abs(diff.x.dist)) {
             dist = curr.x;
-            dir = x_dir;
+            dir = diff.x.dir;
             // console.log('INSIDE X direction: ' + dir + ' & distance: ' + dist);
         } else {
             dist = curr.y;
-            dir = y_dir;
+            dir = diff.y.dir;
             // console.log('INSIDE Y direction: ' + dir + ' & distance: ' + dist);
         }
 
@@ -247,7 +279,18 @@ function ScrollMonitor(config) {
 
 
     function didScrollEnoughInDirection(dist, dir) {
-        if (($conf.dir == dir) && ($conf.dist <= dist)) {
+        if ($conf.log) {
+            console.log('Checking if scroll distance in the right direction was enough.');
+        }
+
+        // $conf.dir will be an array of a string.
+        // If the user changes the state of `dir` to something else,
+        // then screw them.
+        if ((($conf.dir.constructor === Array) &&
+             ($conf.dir.indexOf(dir) != -1) &&
+             ($conf.dist <= dist)) ||
+            ((typeof $conf.dir == 'string') &&
+             ($conf.dir == dir))) {
             return true;
         }
         else {
@@ -258,6 +301,10 @@ function ScrollMonitor(config) {
 
 
     function didScrollEnough(dist, dir) {
+        if ($conf.log) {
+            console.log('Checking if scroll distance was enough.');
+        }
+
         if ($conf.dist <= dist) {
             return true;
         }
@@ -269,6 +316,10 @@ function ScrollMonitor(config) {
 
 
     function getCurrentPosition() {
+        if ($conf.log) {
+            console.log('Getting current position.');
+        }
+
         return {
             x: $conf.elem[$self.dist_x],
             y: $conf.elem[$self.dist_y]
@@ -277,8 +328,52 @@ function ScrollMonitor(config) {
 
 
 
+    function getDeltas(curr) {
+        if ($conf.log) {
+            console.log('Getting deltas and setting $x and $y vectors.');
+        }
+
+        var x_dist = (curr.x - $x.last),
+            y_dist = (curr.y - $y.last),
+            x_dir = null,
+            y_dir = null;
+
+        if (x_dist < 0) {
+            x_dir = 'left';
+            $x.vect = ($x.vect < 0) ? ($x.vect + x_dist) : x_dist;
+        } else if (0 < x_dist) {
+            x_dir = 'right';
+            $x.vect = (0 < $x.vect) ? ($x.vect + x_dist) : x_dist;
+        }
+
+        if (y_dist < 0) {
+            y_dir = 'up';
+            $y.vect = ($y.vect < 0) ? ($y.vect + y_dist) : y_dist;
+        } else if (0 < y_dist) {
+            y_dir = 'down';
+            $y.vect = (0 < $y.vect) ? ($y.vect + y_dist) : y_dist;
+        }
+
+        return {
+            x: {
+                dist: x_dist,
+                dir: x_dir
+            },
+            y: {
+                dist: y_dist,
+                dir: y_dir
+            }
+        }
+    }
+
+
+
     function scrollCheckWrapup(curr, exec_pos) {
-        if (exec_pos) {
+        if ($conf.log) {
+            console.log('Wrapping up scroll check.');
+        }
+
+        if (isInt(exec_pos)) {
             $self.last_f = exec_pos;
             $conf.func();
         }
@@ -290,6 +385,13 @@ function ScrollMonitor(config) {
 
 
     function mergeObjects(obj1, obj2) {
+        if ($conf.log) {
+            console.log('Merging this object:');
+            console.log(obj1);
+            console.log('with this one:');
+            console.log(obj2);
+        }
+
         for (var key in obj2) {
             if (obj2.hasOwnProperty(key)) {
                 if ((obj1[key]) &&
@@ -310,9 +412,12 @@ function ScrollMonitor(config) {
 
     // Copied and modified this from:
     // http://www.inventpartners.com/javascript_is_int
-    function is_int(n) {
-        if ((parseInt(n) == parseFloat(n)) &&
-            (!isNaN(n))) {
+    function isInt(n) {
+        if ($conf.log) {
+            console.log('Checking if '+n+' is an integer.');
+        }
+
+        if ((parseInt(n) == parseFloat(n)) && (!isNaN(n))) {
             return true;
         } else {
             return false;
@@ -321,16 +426,37 @@ function ScrollMonitor(config) {
 
 
 
-    function dropNulls(obj) {
-        var ret = JSON.parse(JSON.stringify(obj));
-
-        for (var key in ret) {
-            if (ret[key] == null) {
-                delete ret[key];
-            }
+    function getPublicProperties() {
+        if ($conf.log) {
+            console.log('Getting public properties.');
         }
 
-        return ret;
+        return {
+            x: (function () {return $x;}),
+            y: (function () {return $y;}),
+            start: addListener,
+            stop: removeListener
+        };
+    }
+
+
+
+    function addListener() {
+        if ($conf.log) {
+            console.log('Adding window scroll listener.');
+        }
+
+        $conf.elem.addEventListener('scroll', $self.handler);
+    }
+
+
+
+    function removeListener() {
+        if ($conf.log) {
+            console.log('Removing window scroll listener.');
+        }
+
+        $conf.elem.removeEventListener('scroll', $self.handler);
     }
 
 
@@ -341,8 +467,6 @@ function ScrollMonitor(config) {
 
 
 
-    this.init = init;
-
     // This needs to stay down here.
-    return this.init(config);
+    return init(config);
 }
