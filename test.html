@@ -42,12 +42,13 @@
             dist: 10,
             func: (function () {console.log('Up 10 ('+window.scrollY+')');})
             });
+          */
 
-         var down200 = new ScrollMonitor({
+         var y200 = new ScrollMonitor({
              dir: 'y',
              dist: 200,
              func: (function () {
-                 console.log('Down 200 ('+window.scrollY+')');
+                 console.log('Up or down 200 ('+window.scrollY+')');
                  document.getElementById('wrap').style.top = window.scrollY + 50;
              })
          });
@@ -68,7 +69,6 @@
                  }
              })
          });
-          */
 
          var _top = new ScrollMonitor({
              pos: 'top',

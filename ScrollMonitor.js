@@ -154,11 +154,9 @@ function ScrollMonitor(config) {
         }
 
         else if (((conf.hasOwnProperty('dir')) &&
-                  (getValidDirections().indexOf(conf.dir) != -1)) ||
-                 (conf.dir == null)) {
-            if (conf.dir == 'y') {valid.dir = ['up', 'down'];}
-            else if (conf.dir == 'x') {valid.dir = ['left', 'right'];}
-            else {valid.dir = conf.dir;}
+                  (isDirectionValid(conf.dir))) ||
+                 (!conf.hasOwnProperty('dir'))) {
+            valid.dir = conf.dir;
 
             if ((conf.hasOwnProperty('dist')) && (isInt(conf.dist))) {
                 valid.dist = conf.dist;
@@ -178,6 +176,18 @@ function ScrollMonitor(config) {
         valid.log = conf.log;
 
         return valid;
+    }
+
+
+
+    function isDirectionValid(dir) {
+        if (((getValidDirections().indexOf(dir) != -1)) ||
+            (dir == null)) {
+            return true;
+        }
+        else {
+            return false;
+        }
     }
 
 
@@ -206,7 +216,17 @@ function ScrollMonitor(config) {
             $self.dist_y = 'scrollTop';
         }
 
+        setSelfBiDirection($conf.dir);
+
         $self.last_f = 0;
+    }
+
+
+
+    function setSelfBiDirection(dir) {
+        $self.bi_dir = ((dir == 'x') || (dir == 'y'))
+            ? true
+            : false;
     }
 
 
@@ -283,14 +303,7 @@ function ScrollMonitor(config) {
             console.log('Checking if scroll distance in the right direction was enough.');
         }
 
-        // $conf.dir will be an array of a string.
-        // If the user changes the state of `dir` to something else,
-        // then screw them.
-        if ((($conf.dir.constructor === Array) &&
-             ($conf.dir.indexOf(dir) != -1) &&
-             ($conf.dist <= dist)) ||
-            ((typeof $conf.dir == 'string') &&
-             ($conf.dir == dir))) {
+        if ($conf.dir == dir) {
             return true;
         }
         else {
@@ -339,18 +352,18 @@ function ScrollMonitor(config) {
             y_dir = null;
 
         if (x_dist < 0) {
-            x_dir = 'left';
+            x_dir = ($self.bi_dir) ? 'x' : 'left';
             $x.vect = ($x.vect < 0) ? ($x.vect + x_dist) : x_dist;
         } else if (0 < x_dist) {
-            x_dir = 'right';
+            x_dir = ($self.bi_dir) ? 'x' : 'right';
             $x.vect = (0 < $x.vect) ? ($x.vect + x_dist) : x_dist;
         }
 
         if (y_dist < 0) {
-            y_dir = 'up';
+            y_dir = ($self.bi_dir) ? 'y' : 'up';
             $y.vect = ($y.vect < 0) ? ($y.vect + y_dist) : y_dist;
         } else if (0 < y_dist) {
-            y_dir = 'down';
+            y_dir = ($self.bi_dir) ? 'y' : 'down';
             $y.vect = (0 < $y.vect) ? ($y.vect + y_dist) : y_dist;
         }
 
@@ -426,6 +439,18 @@ function ScrollMonitor(config) {
 
 
 
+    function changeDirection(dir) {
+        if (isDirectionValid(dir)) {
+            setSelfBiDirection(dir);
+            $conf.dir = dir;
+        }
+        else {
+            console.log("Invalid direction '"+dir+"'. Skipping it.");
+        }
+    }
+
+
+
     function getPublicProperties() {
         if ($conf.log) {
             console.log('Getting public properties.');
@@ -435,7 +460,8 @@ function ScrollMonitor(config) {
             x: (function () {return $x;}),
             y: (function () {return $y;}),
             start: addListener,
-            stop: removeListener
+            stop: removeListener,
+            setDir: changeDirection
         };
     }
 
