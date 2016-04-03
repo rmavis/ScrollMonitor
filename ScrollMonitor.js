@@ -475,7 +475,16 @@ function ScrollMonitor(config) {
 
         if (isInt(exec_pos)) {
             $self.last_f = exec_pos;
-            $conf.func();
+            $conf.func({
+                x: {
+                    pos: curr.x,
+                    vect: $pos.x.vect
+                },
+                y: {
+                    pos: curr.y,
+                    vect: $pos.y.vect
+                }
+            });
         }
 
         $pos.x.last = curr.x,
