@@ -23,15 +23,13 @@ function ScrollMonitor(config) {
      * should not be exposed to the user and they provide no useful
      * information.
      *
-     * `$pos.x` and `$pos.y` can expose useful information but they are also
-     * used internally, so to the user they are read-only.
-     *
      * `$conf` is given by the user. It makes some sense that they
-     * should be able to change it, so it's merged with some other
-     * user-safe properties and returned to them.
+     * should be able to change it, but the values are also used
+     * internally, so they should be checked a little. See how they
+     * are returned in `setPublicProperties`.
      *
-     * The `$conf.dir` property is checked and slightly modified
-     * during validation. See `validateConfig` for more.
+     * The `$pos` coordinates can expose useful information but they
+     * are also used internally, so to the user they are read-only.
      */
     var $self = { },
         $conf = { },
@@ -72,9 +70,8 @@ function ScrollMonitor(config) {
 
 
     /*
-     * The `x` and `y` values map to `['left', 'right']` and
-     * `['up', 'down']`, respectively. For more on those, see
-     * `validateConfig`.
+     * `x` maps to `left` and `right`, `y` maps to `up` and `down`.
+     * For more on those, see `validateConfig`.
      */
     function getValidDirections() {
         if ($conf.log) {
@@ -86,6 +83,10 @@ function ScrollMonitor(config) {
 
 
 
+    /*
+     * Similarly, `x` maps to `left` and `right`, `y` maps to `top`
+     * and `bottom`.
+     */
     function getValidPositions() {
         if ($conf.log) {
             console.log("Getting valid positions.");
