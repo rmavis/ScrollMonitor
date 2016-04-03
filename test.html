@@ -3,6 +3,7 @@
         <style>
          body {
              height: 9000px;
+             width: 9000px;
          }
 
          .blockwrap {
@@ -30,29 +31,32 @@
         </div>
 
         <script>
-         /*
-            var down20 = new ScrollMonitor({
-            dir: 'down',
-            dist: 20,
-            func: (function () {console.log('Down 20 ('+window.scrollY+')');})
-            });
 
-            var up10 = new ScrollMonitor({
-            dir: 'up',
-            dist: 10,
-            func: (function () {console.log('Up 10 ('+window.scrollY+')');})
-            });
-          */
-
-         var y200 = new ScrollMonitor({
-             dir: 'y',
+/*
+         // Demonstrates unidirectionality. Working.
+         var down200 = new ScrollMonitor({
+             dir: 'down',
              dist: 200,
              func: (function () {
-                 console.log('Up or down 200 ('+window.scrollY+')');
-                 document.getElementById('wrap').style.top = window.scrollY + 50;
+                 console.log('Down 200 ('+window.scrollY+')');
              })
          });
+*/
 
+/*
+         // Demonstrates bidirectionality. Working.
+         var y100 = new ScrollMonitor({
+             dir: 'y',
+             dist: 100,
+             func: (function () {
+                 console.log('Up or down 100 ('+window.scrollY+')');
+             })
+         });
+*/
+
+/*
+         // Demonstrates omnidirectionality (dir == null / unset). Working.
+*/
          var block = new ScrollMonitor({
              elem: document.getElementById('wrap'),
              // dir: 'down',
@@ -70,11 +74,25 @@
              })
          });
 
+/*
+         // Demonstrates position. Working.
          var _top = new ScrollMonitor({
              pos: 'top',
              dist: 50,
              func: (function () {
                  console.log('Within 50 of top ('+window.scrollY+').');
+             })
+         });
+*/
+
+/*
+         // Demonstrates biposition. Working.
+*/
+         var ypos = new ScrollMonitor({
+             pos: 'y',
+             dist: 100,
+             func: (function () {
+                 console.log('Within 100 of top or bottom ('+window.scrollY+').');
              })
          });
 
