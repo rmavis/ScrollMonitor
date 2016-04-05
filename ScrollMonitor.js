@@ -3,6 +3,7 @@
   TODO:
   - [X] Support for `left` and `right` positions
   - [X] Position functions fire too many times?
+  - [X] In and out functions on positions
   - [ ] Documentation
   - [ ] Examples
   - [ ] Better names for, e.g., `didScrollToNearEdge`
@@ -167,18 +168,22 @@ function ScrollMonitor(config) {
 
         var valid = { };
 
-        if ((conf.hasOwnProperty('func')) &&
-            (typeof conf.func == 'function')) {
-            valid.func = conf.func;
-        }
-        else {
-            console.log("Error: no callback function given.");
-            return null;
-        }
-
         if ((conf.hasOwnProperty('pos')) &&
             (getValidPositions().indexOf(conf.pos) != -1)) {
             valid.pos = conf.pos;
+
+            if ((conf.hasOwnProperty('func_in')) &&
+                (typeof conf.func_in == 'function') &&
+                (conf.hasOwnProperty('func_out')) &&
+                (typeof conf.func_out == 'function')) {
+                valid.func_in = conf.func_in;
+                valid.func_out = conf.func_out;
+            }
+            else {
+                console.log("Error: no in/out callback functions given.");
+                return null;
+            }
+
             valid.dist = ((conf.hasOwnProperty('dist')) &&
                           (isInt(conf.dist)))
                 ? conf.dist
@@ -189,6 +194,15 @@ function ScrollMonitor(config) {
                   (isDirectionValid(conf.dir))) ||
                  (!conf.hasOwnProperty('dir'))) {
             valid.dir = conf.dir;
+
+            if ((conf.hasOwnProperty('func')) &&
+                (typeof conf.func == 'function')) {
+                valid.func = conf.func;
+            }
+            else {
+                console.log("Error: no callback function given.");
+                return null;
+            }
 
             if ((conf.hasOwnProperty('dist')) && (isInt(conf.dist))) {
                 valid.dist = conf.dist;
@@ -314,15 +328,20 @@ function ScrollMonitor(config) {
 
         var curr = getCurrentPosition(),
             diff = getDeltas(curr),
-            exec_pos = null;
+            new_pos_check = $self.checkEdge(curr[$self.pos_check]),
+            old_pos_check = $self.checkEdge($pos[$self.pos_check].last),
+            func = null;
 
-        // If the last position is 0, the initial pass won't fire. #HERE
-        if (($self.checkEdge(curr[$self.pos_check])) &&
-            (!$self.checkEdge($pos[$self.pos_check].last))) {
-            exec_pos = curr[$self.pos_check];
+        if ((new_pos_check) && (!old_pos_check)) {
+            func = $conf.func_in;
+        }
+        else if ((!new_pos_check) && (old_pos_check)) {
+            func = $conf.func_out;
         }
 
-        scrollCheckWrapup(curr, exec_pos);
+        var exec_pos = (func) ? curr[$self.pos_check] : null;
+
+        scrollCheckWrapup(curr, exec_pos, func);
     }
 
 
@@ -339,7 +358,7 @@ function ScrollMonitor(config) {
 
 
     function didScrollToNearEdge(pos) {
-        if (pos <= $conf.dist) {
+        if (pos < $conf.dist) {
             return true;
         }
         else {
@@ -350,7 +369,7 @@ function ScrollMonitor(config) {
 
 
     function didScrollToFarEdge(pos) {
-        if (($self.pos_edge - $conf.dist) <= pos) {
+        if (($self.pos_edge - $conf.dist) < pos) {
             return true;
         }
         else {
@@ -384,7 +403,7 @@ function ScrollMonitor(config) {
             ? dist
             : null;
 
-        scrollCheckWrapup(curr, exec_pos);
+        scrollCheckWrapup(curr, exec_pos, $conf.func);
     }
 
 
@@ -394,7 +413,7 @@ function ScrollMonitor(config) {
             console.log('Checking if scroll distance ('+$conf.dist+' vs '+dist+') in the right direction ('+$conf.dir+' vs '+dir+') was enough.');
         }
 
-        if (($conf.dir == dir) && ($conf.dist <= dist)) {
+        if (($conf.dir == dir) && ($conf.dist < dist)) {
             return true;
         }
         else {
@@ -409,7 +428,7 @@ function ScrollMonitor(config) {
             console.log('Checking if scroll distance was enough.');
         }
 
-        if ($conf.dist <= dist) {
+        if ($conf.dist < dist) {
             return true;
         }
         else {
@@ -468,14 +487,14 @@ function ScrollMonitor(config) {
 
 
 
-    function scrollCheckWrapup(curr, exec_pos) {
+    function scrollCheckWrapup(curr, exec_pos, func) {
         if ($conf.log) {
             console.log('Wrapping up scroll check.');
         }
 
         if (isInt(exec_pos)) {
             $self.last_f = exec_pos;
-            $conf.func({
+            func({
                 x: {
                     pos: curr.x,
                     vect: $pos.x.vect
@@ -609,7 +628,6 @@ function ScrollMonitor(config) {
         var public = {
             dist: (function (n) {return changeOrView('dist', n);}),
             elem: (function (n) {return changeOrView('elem', n);}),
-            func: (function (n) {return changeOrView('func', n);}),
             log: (function (n) {return changeOrView('log', n);}),
             x: (function () {return $pos.x;}),
             y: (function () {return $pos.y;}),
@@ -619,9 +637,12 @@ function ScrollMonitor(config) {
 
         if ('pos' in $conf) {
             public.setPos = changePosition;
+            public.funcIn = (function (n) {return changeOrView('func_in', n);}),
+            public.funcOut = (function (n) {return changeOrView('func_out', n);}),
         }
         else {
             public.setDir = changeDirection;
+            public.func = (function (n) {return changeOrView('func', n);}),
         }
 
         return public;

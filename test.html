@@ -37,7 +37,7 @@
          var down200 = new ScrollMonitor({
              dir: 'down',
              dist: 200,
-             func: (function () {
+             func: (function (pos) {
                  console.log('Down 200 ('+window.scrollY+')');
              })
          });
@@ -48,7 +48,7 @@
          var y100 = new ScrollMonitor({
              dir: 'y',
              dist: 100,
-             func: (function () {
+             func: (function (pos) {
                  console.log('Up or down 100 ('+window.scrollY+')');
              })
          });
@@ -61,7 +61,7 @@
              elem: document.getElementById('wrap'),
              // dir: 'down',
              dist: 50,
-             func: (function () {
+             func: (function (pos) {
                  // console.log('Down 50 ('+document.getElementById('wrap').scrollTop+')');
                  var elem = document.getElementById('wrap');
                  if (elem.style.backgroundColor == 'rgb(255, 0, 255)') {
@@ -76,14 +76,17 @@
 
 /*
          // Demonstrates position. Working.
+*/
          var _top = new ScrollMonitor({
              pos: 'top',
              dist: 50,
-             func: (function () {
+             func_in: (function (pos) {
                  console.log('Within 50 of top ('+window.scrollY+').');
+             }),
+             func_out: (function (pos) {
+                 console.log('Without 50 of top ('+window.scrollY+').');
              })
          });
-*/
 
 /*
          // Demonstrates biposition. Working.
@@ -91,8 +94,11 @@
          var ypos = new ScrollMonitor({
              pos: 'y',
              dist: 100,
-             func: (function () {
+             func_in: (function (pos) {
                  console.log('Within 100 of top or bottom ('+window.scrollY+').');
+             }),
+             func_out: (function (pos) {
+                 console.log('Without 100 of top or bottom ('+window.scrollY+').');
              })
          });
 
