@@ -12,7 +12,40 @@
 */
 
 
-
+/*
+ * SCROLL MONITOR
+ *
+ * ScrollMonitor is a class for monitoring scroll distances and
+ * positions. It's useful for cases in which you want to trigger
+ * things when the user scrolls by a certain amount or within range
+ * of an edge, like changing the nav menu when they scroll to the
+ * top of the page or sliding something in from the left when they
+ * scroll right.
+ *
+ *
+ * USAGE
+ *
+ * Create an instance of ScrollMonitor by passing it a config object:
+ *
+ *   var scroll_mon = new ScrollMonitor({
+ *       pos: 'top',
+ *       dist: 50,
+ *       func_in: makeNavAppear,
+ *       func_out: makeNavDisappear
+ *   });
+ *
+ * After being initialized, `scroll_mon` will monitor the window's
+ * scroll position and call `makeNavAppear` when the user scrolls
+ * within 50 pixels of the top of the window and `makeNavDisappear`
+ * when they scroll more than 50 pixels away from it. The functions
+ * will only be called once per event -- when the transition occurs.
+ *
+ *
+ *
+ * DEPENDENCIES
+ * DETAILS
+ *
+ */
 function ScrollMonitor(config) {
 
     /*
