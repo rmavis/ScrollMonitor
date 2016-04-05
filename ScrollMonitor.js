@@ -4,10 +4,10 @@
   - [X] Support for `left` and `right` positions
   - [X] Position functions fire too many times?
   - [X] In and out functions on positions
-  - [ ] Documentation
-  - [ ] Examples
-  - [ ] Better names for, e.g., `didScrollToNearEdge`
+  - [X] Documentation
+  - [X] Better names for, e.g., `isWithinNearRange`
         Like `isPosByNearEdge` of `isPosWithinNearRange`?
+  - [ ] Examples
 
 */
 
@@ -145,21 +145,30 @@ function ScrollMonitor(config) {
 
 
     /*
-     * In the interest of usability, the user-given directions need
-     * to be valid direction words. In the interest of efficiency,
-     * `x` and `y` are also valid direction words. If one of those
-     * is given, `$self.bi_dir` will be set to true, else false.
-     * This bidirectionality boolean allows for easy setting of the
-     * vector in `getDeltas` and also easy checking of the direction
-     * in `didScrollEnoughInDirection`.
+     * A ScrollMonitor instance will monitor either a `pos` or a
+     * `dir`. In the interest of usability, the user-given position/
+     * direction needs to be a descriptive word. In the interest of
+     * efficiency, `x` and `y` are also valid words.
      *
-     * Also, if a `pos` is given instead of a `dir`, then the scroll
-     * position will be checked instead of the distance. The `pos`
-     * must be one of the edges of the element. And an optional `dist`
-     * can be given as a buffer against that edge. So a config with
-     *   { pos: 'top', dist: 100 }
-     * will fire its function when the scroll position is within 100
-     * pixels of the top of the element.
+     * If a `pos` is specified, then two functions should be given:
+     * a `func_in` and a `func_out`. When the scroll position moves
+     * into the given position, the `func_in` will fire, and when it
+     * moves out, `func_out`.
+     *
+     * With a `dir` monitor only one `func` is needed.
+     *
+     * If a `pos` is specified, then the given `dist` will specify a
+     * buffer off of that position.  So a config with
+     *   { ... pos: 'top', dist: 100, ... }
+     * will fire its `func_in` when the scroll position moves within
+     * 100 pixels of the top of the element, and its `func_out` when
+     * it moves out of that range.
+     *
+     * If `x` or `y` is given, then a bi-directional/-positional
+     * boolean will be set to true, else false. This boolean allows
+     * for easy setting of the vector in `getDeltas` and also easy
+     * checking of the direction in `didScrollEnoughInDirection`, etc.
+     *
      */
     function validateConfig(conf) {
         if ($conf.log) {
@@ -180,7 +189,7 @@ function ScrollMonitor(config) {
                 valid.func_out = conf.func_out;
             }
             else {
-                console.log("Error: no in/out callback functions given.");
+                console.log("Error: lacking in/out callback functions.");
                 return null;
             }
 
@@ -226,6 +235,10 @@ function ScrollMonitor(config) {
 
 
 
+    /*
+     * This is a convenience function, since the direction can be
+     * set both on init and later by the user.
+     */
     function isDirectionValid(dir) {
         if ($conf.log) {
             console.log('Checking if direction "'+dir+'" is valid.');
@@ -256,6 +269,10 @@ function ScrollMonitor(config) {
         else {
             $self.handler = checkScrollDistance;
             setSelfBiDirection($conf.dir);
+            // The scroll vector will be checked against this before
+            // firing. A vector is a contiguous run. A change in
+            // direction will reset the vector.
+            $self.last_f = 0;
         }
 
         if ($conf.elem == window) {
@@ -266,8 +283,6 @@ function ScrollMonitor(config) {
             $self.dist_x = 'scrollLeft';
             $self.dist_y = 'scrollTop';
         }
-
-        $self.last_f = 0;
     }
 
 
@@ -281,12 +296,10 @@ function ScrollMonitor(config) {
             $self.bi_dir = true;
             $self.checkDist = didScrollEnough;
         }
-        else if ((dir == 'x') || (dir == 'y')) {
-            $self.bi_dir = true;
-            $self.checkDist = didScrollEnoughInDirection;
-        }
         else {
-            $self.bi_dir = false;
+            $self.bi_dir = ((dir == 'x') || (dir == 'y'))
+                ? true
+                : false;
             $self.checkDist = didScrollEnoughInDirection;
         }
     }
@@ -298,23 +311,24 @@ function ScrollMonitor(config) {
             console.log('Checking bipositionality');
         }
 
+        // This sets the axis to check in the `pos` object.
         $self.pos_check = ((pos == 'y') || (pos == 'top') || (pos == 'bottom'))
             ? 'y'
             : 'x';
 
         if ((pos == 'top') || (pos == 'left')) {
             $self.bi_pos = false;
-            $self.checkEdge = didScrollToNearEdge;
+            $self.checkEdge = isWithinNearRange;
             $self.pos_edge = 0;  // The $conf.dist is checked instead.
         }
         else if ((pos == 'bottom') || (pos == 'right')) {
             $self.bi_pos = false;
-            $self.checkEdge = didScrollToFarEdge;
+            $self.checkEdge = isWithinFarRange;
             $self.pos_edge = getFarEdge($self.pos_check);
         }
         else {
             $self.bi_pos = true;
-            $self.checkEdge = didScrollToEdge;
+            $self.checkEdge = isWithinEitherRange;
             $self.pos_edge = getFarEdge($self.pos_check);
         }
     }
@@ -332,9 +346,11 @@ function ScrollMonitor(config) {
             old_pos_check = $self.checkEdge($pos[$self.pos_check].last),
             func = null;
 
+        // If the new position is within range and the old one wasn't.
         if ((new_pos_check) && (!old_pos_check)) {
             func = $conf.func_in;
         }
+        // If the new position isn't within range and the old one was.
         else if ((!new_pos_check) && (old_pos_check)) {
             func = $conf.func_out;
         }
@@ -346,39 +362,6 @@ function ScrollMonitor(config) {
 
 
 
-    function didScrollToEdge(pos) {
-        if ((didScrollToNearEdge(pos)) || (didScrollToFarEdge(pos))) {
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
-
-
-
-    function didScrollToNearEdge(pos) {
-        if (pos < $conf.dist) {
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
-
-
-
-    function didScrollToFarEdge(pos) {
-        if (($self.pos_edge - $conf.dist) < pos) {
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
-
-
-
     function checkScrollDistance(evt) {
         if ($conf.log) {
             console.log("Checking scroll distance.");
@@ -386,54 +369,53 @@ function ScrollMonitor(config) {
 
         var curr = getCurrentPosition(),
             diff = getDeltas(curr),
-            dist = null,
+            exec_pos = null,
+            pos = null,
             dir = null;
 
         // Prefer the Y difference.
-        if (Math.abs(diff.y.dist) < Math.abs(diff.x.dist)) {
-            dist = curr.x;
-            dir = diff.x.dir;
-        }
-        else {
-            dist = curr.y;
+        if (Math.abs(diff.x.dist) < Math.abs(diff.y.dist)) {
+            pos = curr.y;
             dir = diff.y.dir;
         }
+        else {
+            pos = curr.x;
+            dir = diff.x.dir;
+        }
 
-        var exec_pos = ($self.checkDist(Math.abs($self.last_f - dist), dir))
-            ? dist
-            : null;
+        if ($self.checkDist(Math.abs($self.last_f - pos), dir)) {
+            $self.last_f = pos;
+            exec_pos = pos;
+        }
 
         scrollCheckWrapup(curr, exec_pos, $conf.func);
     }
 
 
 
-    function didScrollEnoughInDirection(dist, dir) {
+    /*
+     * The `func` parameter must be a function or this will fail.
+     */
+    function scrollCheckWrapup(curr, exec_pos, func) {
         if ($conf.log) {
-            console.log('Checking if scroll distance ('+$conf.dist+' vs '+dist+') in the right direction ('+$conf.dir+' vs '+dir+') was enough.');
+            console.log('Wrapping up scroll check.');
         }
 
-        if (($conf.dir == dir) && ($conf.dist < dist)) {
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
-
-
-
-    function didScrollEnough(dist, dir) {
-        if ($conf.log) {
-            console.log('Checking if scroll distance was enough.');
+        if (isInt(exec_pos)) {
+            func({
+                x: {
+                    pos: curr.x,
+                    vect: $pos.x.vect
+                },
+                y: {
+                    pos: curr.y,
+                    vect: $pos.y.vect
+                }
+            });
         }
 
-        if ($conf.dist < dist) {
-            return true;
-        }
-        else {
-            return false;
-        }
+        $pos.x.last = curr.x,
+        $pos.y.last = curr.y;
     }
 
 
@@ -450,7 +432,13 @@ function ScrollMonitor(config) {
     }
 
 
-
+    /*
+     * For bi-directional instances, this will set the vector's
+     * direction as the axis name rather than the direction's name.
+     * If the parameter results in no difference from the previous
+     * state, then the returned `dist`s will be `0` and the `dir`s
+     * will be `null`.
+     */
     function getDeltas(curr) {
         if ($conf.log) {
             console.log('Getting deltas and setting x and y vectors.');
@@ -487,34 +475,83 @@ function ScrollMonitor(config) {
 
 
 
-    function scrollCheckWrapup(curr, exec_pos, func) {
-        if ($conf.log) {
-            console.log('Wrapping up scroll check.');
+    function isWithinNearRange(pos) {
+        if (pos < $conf.dist) {
+            return true;
         }
-
-        if (isInt(exec_pos)) {
-            $self.last_f = exec_pos;
-            func({
-                x: {
-                    pos: curr.x,
-                    vect: $pos.x.vect
-                },
-                y: {
-                    pos: curr.y,
-                    vect: $pos.y.vect
-                }
-            });
+        else {
+            return false;
         }
-
-        $pos.x.last = curr.x,
-        $pos.y.last = curr.y;
     }
 
 
 
-    // The parameter to this needs to be `x` or `y`.
-    // The `inner[Height|Width]` properties are not supported below
-    // IE9. And `clientHeight` is for IE.
+    function isWithinFarRange(pos) {
+        if (($self.pos_edge - $conf.dist) < pos) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+
+
+    function isWithinEitherRange(pos) {
+        if ((isWithinNearRange(pos)) || (isWithinFarRange(pos))) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+
+
+    function didScrollEnoughInDirection(dist, dir) {
+        if ($conf.log) {
+            console.log('Checking if scroll distance ('+$conf.dist+' vs '+dist+') in the right direction ('+$conf.dir+' vs '+dir+') was enough.');
+        }
+
+        if (($conf.dir == dir) && ($conf.dist < dist)) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+
+
+    function didScrollEnough(dist, dir) {
+        if ($conf.log) {
+            console.log('Checking if scroll distance was enough.');
+        }
+
+        if ($conf.dist < dist) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+
+
+    /*
+     * When scrolling, the greatest possible distance from the
+     * origin you can reach is:
+     *   (element [height|width]) - (viewport [height|width])
+     * So when checking agaist the far edge, it's that number that's
+     * being checked. So for
+     *   elem H: 1000, viewport H: 100, dist: 50
+     * the value that the position will compare to will be 850.
+     *
+     * The parameter to this needs to be `x` or `y`.
+     *
+     * The `inner[Height|Width]` properties are not supported below
+     * IE9. And `clientHeight` is for IE.
+     */
     function getFarEdge(v) {
         var prop = (v == 'x') ? 'Width' : 'Height',
             elem = ($conf.elem == window) ? document.body : $conf.elem;
@@ -530,6 +567,13 @@ function ScrollMonitor(config) {
 
 
 
+    /*
+     * Rather than just modifying the first parameter in-place and
+     * returning it, this creates a new object, fills it first with
+     * the properties of the first parameter and, second, with the
+     * properties of the second. So the assignments will not change
+     * any state variables if one of those is one of the parameters.
+     */
     function mergeObjects(obj1, obj2) {
         if ($conf.log) {
             console.log('Merging this object:');
@@ -581,7 +625,16 @@ function ScrollMonitor(config) {
 
 
 
+    /*
+     * This is required because elements of `$self` result from the
+     * values of the `$conf`. So if one of the config options change,
+     * then `$self` needs to change accordingly.
+     */
     function changeDirection(dir) {
+        if ($conf.log) {
+            console.log("Changing monitored direction.");
+        }
+
         if (isDirectionValid(dir)) {
             setSelfBiDirection(dir);
             $conf.dir = dir;
@@ -593,7 +646,14 @@ function ScrollMonitor(config) {
 
 
 
+    /*
+     * Similar to the situation with `changeDirection`.
+     */
     function changePosition(pos) {
+        if ($conf.log) {
+            console.log("Changing monitored position.");
+        }
+
         if ((getValidPositions().indexOf(pos) != -1)) {
             setSelfBiPosition(pos);
             $conf.pos = pos;
@@ -605,47 +665,22 @@ function ScrollMonitor(config) {
 
 
 
+    /*
+     * For setting `$conf` properties that have no bearing on `$self`.
+     */
     function changeOrView(prop, val) {
         if (typeof val == 'undefined') {
             return $conf[prop];
         }
         else {
-            $conf[prop] = val;
+            if (typeof prop == 'function') {
+                prop(val);
+            }
+            else {
+                $conf[prop] = val;
+            }
             return true;
         }
-    }
-
-
-
-    // The user-facing direction-setter is a function. The
-    // property is not set directly because of bidirectionality.
-    // That needs to be checked and set on `$self`.
-    function setPublicProperties() {
-        if ($conf.log) {
-            console.log('Setting public properties.');
-        }
-
-        var public = {
-            dist: (function (n) {return changeOrView('dist', n);}),
-            elem: (function (n) {return changeOrView('elem', n);}),
-            log: (function (n) {return changeOrView('log', n);}),
-            x: (function () {return $pos.x;}),
-            y: (function () {return $pos.y;}),
-            start: addListener,
-            stop: removeListener
-        };
-
-        if ('pos' in $conf) {
-            public.setPos = changePosition;
-            public.funcIn = (function (n) {return changeOrView('func_in', n);}),
-            public.funcOut = (function (n) {return changeOrView('func_out', n);}),
-        }
-        else {
-            public.setDir = changeDirection;
-            public.func = (function (n) {return changeOrView('func', n);}),
-        }
-
-        return public;
     }
 
 
@@ -666,6 +701,44 @@ function ScrollMonitor(config) {
         }
 
         $conf.elem.removeEventListener('scroll', $self.handler);
+    }
+
+
+
+    /*
+     * All of the instance's public properties will be functions.
+     * The values given in the initialization parameter can be
+     * viewed on those same keys, and set by passing a parameter.
+     * In addition to those, `x` and `y` are given as read-only
+     * access to the `$pos.[x|y]` state variables, and `start` and
+     * `stop` are given for in case monitoring needs to be paused.
+     */
+    function setPublicProperties() {
+        if ($conf.log) {
+            console.log('Setting public properties.');
+        }
+
+        var public = {
+            dist: (function (n) {return changeOrView('dist', n);}),
+            elem: (function (n) {return changeOrView('elem', n);}),
+            log: (function (n) {return changeOrView('log', n);}),
+            x: (function () {return $pos.x;}),
+            y: (function () {return $pos.y;}),
+            start: addListener,
+            stop: removeListener
+        };
+
+        if ('pos' in $conf) {
+            public.pos = (function (n) {return changeOrView(changePosition, n);});
+            public.func_in = (function (n) {return changeOrView('func_in', n);});
+            public.func_out = (function (n) {return changeOrView('func_out', n);});
+        }
+        else {
+            public.dir = (function (n) {return changeOrView(changeDirection, n);});
+            public.func = (function (n) {return changeOrView('func', n);});
+        }
+
+        return public;
     }
 
 
