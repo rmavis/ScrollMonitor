@@ -1,18 +1,4 @@
 /*
-
-  TODO:
-  - [X] Support for `left` and `right` positions
-  - [X] Position functions fire too many times?
-  - [X] In and out functions on positions
-  - [X] Documentation
-  - [X] Better names for, e.g., `isWithinNearRange`
-        Like `isPosByNearEdge` of `isPosWithinNearRange`?
-  - [ ] Examples
-
-*/
-
-
-/*
  * SCROLL MONITOR
  *
  * ScrollMonitor is a class for monitoring scroll distances and
