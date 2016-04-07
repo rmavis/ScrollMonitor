@@ -103,22 +103,31 @@
              top: 50%;
              left: 50%;
              padding: 80px;
+             overflow: hidden;
              background-color: hsl(180, 100%, 50%);
+             z-index: 10;
          }
          #bye-bye[up=n] {
+             height: 0px;
+             width: 0px;
              opacity: 0;
              transform: translate(-50%, -50%) rotateY(720deg);
-             transition: opacity 1.5s ease, transform 1.5s ease;
+             transition: height 1.5s ease, width 1.5s ease, opacity 1.5s ease, transform 1.5s ease;
          }
          #bye-bye[up=y] {
+             height: 50vh;
+             width: 60vw;
              opacity: 1;
              transform: translate(-50%, -50%) rotateY(0deg);
-             transition: opacity 1.5s ease, transform 1.5s ease;
+             transition: height 1.5s ease, width 1.5s ease, opacity 1.5s ease, transform 1.5s
          }
 
          .abscent {
-             position: relative;
+             position: absolute;
+             top: 50%;
+             left: 50%;
              padding: 80px;
+             transform: translate(-50%, -50%);
              border: 3px solid hsl(0, 0%, 100%);
              text-align: center;
          }
@@ -363,6 +372,13 @@ var scro_mo_5 = new ScrollMonitor({
 
 
 
+        <div id="bye-bye" up="n">
+            <div class="abscent">
+                <p class="ciao">This is the end</p>
+                <p>For more info, see the documentation.</p>
+            </div>
+        </div>
+
         <script>
 var scro_mo_6 = new ScrollMonitor({
     pos: 'bottom',
@@ -371,13 +387,6 @@ var scro_mo_6 = new ScrollMonitor({
     func_out: (function (xy) {document.getElementById('bye-bye').setAttribute('up', 'n');}),
 });
         </script>
-
-        <div id="bye-bye" up="n">
-            <div class="abscent">
-                <p class="ciao">This is the end</p>
-                <p>For more info, see the documentation.</p>
-            </div>
-        </div>
 
     </body>
 </html>
