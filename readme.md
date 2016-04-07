@@ -120,8 +120,8 @@ with these changes:
 ```
 
 During initialization, the functions that check distances and
-position are set as state variables. This is in to minimize the
-number of checks that must be made each time the scroll event is
+position are set as state variables. This is in effort to minimize
+the number of checks that must be made each time the scroll event is
 fired, which can come frequently.
 
 Because those checks are set during initialization, a change in

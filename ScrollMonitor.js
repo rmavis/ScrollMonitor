@@ -103,9 +103,9 @@
  *       func: (function),
  *
  * During initialization, the functions that check distances and
- * position are set as state variables. This is in to minimize the
- * number of checks that must be made each time the scroll event is
- * fired, which can come frequently.
+ * position are set as state variables. This is in effort to
+ * minimize the number of checks that must be made each time the
+ * scroll event is fired, which can come frequently.
  *
  * Because those checks are set during initialization, a change in
  * any of the related configuration options must be reflected in the
