@@ -69,7 +69,7 @@
  *   scroll_mon = null;
  *
  * Or to start monitoring again:
- *  scroll_mon.start();
+ *   scroll_mon.start();
  *
  * For a full list of public properties, see documentation on the
  * `setPublicProperties` function.
@@ -625,7 +625,7 @@ function ScrollMonitor(config) {
 
 
     function isWithinFarRange(pos) {
-        if (($self.pos_edge - $conf.dist) < pos) {
+        if (($self.pos_edge - $conf.dist) <= pos) {
             return true;
         }
         else {
@@ -692,13 +692,18 @@ function ScrollMonitor(config) {
      */
     function getFarEdge(v) {
         var prop = (v == 'x') ? 'Width' : 'Height',
-            elem = ($conf.elem == window) ? document.body : $conf.elem;
-
-        var elem_v = elem['offset'+prop] || elem['client'+prop];
-
-        var view_v = ($conf.elem == window)
+            elem = ($conf.elem == window) ? document.body : $conf.elem,
+            elem_v = elem['scroll'+prop] || elem['client'+prop],
+            view_v = ($conf.elem == window)
             ? window['inner'+prop]
-            : $conf.elem['client'+prop];
+            : elem['client'+prop];
+        
+        // console.log('prop:'+prop);
+        // console.log('elem:');
+        // console.log(elem);
+        // console.log(elem_v);
+        // console.log(view_v);
+        // console.log(elem_v - view_v);
 
         return (elem_v - view_v);
     }
