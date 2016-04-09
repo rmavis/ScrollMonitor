@@ -7,6 +7,8 @@ of an edge, like changing the nav menu when they scroll to the
 top of the page or sliding something in from the left when they
 scroll right.
 
+[Here's a little demo](http://richardmavis.info/misc/scrollmonitor/demo.html).
+
 
 ## USAGE
 
